@@ -1,86 +1,117 @@
+import argparse
 import cv2
 import numpy as np
-from google.colab.patches import cv2_imshow
 from sklearn.neighbors import KNeighborsClassifier
 
 
-cap = cv2.VideoCapture('/content/drive/MyDrive/Projectmini/Black.mp4')
+def parse_args():
+    parser = argparse.ArgumentParser(description="Vehicle detection with basic speed and color estimation.")
+    parser.add_argument(
+        "--input",
+        "--video",
+        dest="input_path",
+        required=True,
+        help="Path to input video file",
+    )
+    parser.add_argument(
+        "--output",
+        dest="output_path",
+        default="output.avi",
+        help="Path to save processed output video (default: output.avi)",
+    )
+    parser.add_argument(
+        "--no-display",
+        dest="display",
+        action="store_false",
+        help="Disable live video display window.",
+    )
+    parser.set_defaults(display=True)
+    return parser.parse_args()
 
-if not cap.isOpened():
-    print("Error: Could not open video file.")
-    exit()
 
-background_subtractor = cv2.createBackgroundSubtractorMOG2()
+def main():
+    args = parse_args()
 
-color_classifier = KNeighborsClassifier(n_neighbors=1)
+    cap = cv2.VideoCapture(args.input_path)
 
+    if not cap.isOpened():
+        print(f"Error: Could not open video file: {args.input_path}")
+        return
 
-colors = ['red', 'green', 'blue', 'white', 'black']
-color_values = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255], [0, 0, 0]]
+    background_subtractor = cv2.createBackgroundSubtractorMOG2()
 
-color_classifier.fit(color_values, colors)
+    color_classifier = KNeighborsClassifier(n_neighbors=1)
 
-output_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-output_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-output_fps = cap.get(cv2.CAP_PROP_FPS)
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-out = cv2.VideoWriter('/content/drive/MyDrive/Projectmini/Modelcheck_output.avi', fourcc, output_fps, (output_width, output_height))
+    colors = ['red', 'green', 'blue', 'white', 'black']
+    color_values = [[255, 0, 0], [0, 255, 0], [0, 0, 255], [255, 255, 255], [0, 0, 0]]
 
-previous_frame = None
-vehicle_count = 0
-speeds = []
+    color_classifier.fit(color_values, colors)
 
-while(cap.isOpened()):
-    ret, frame = cap.read()
-    if not ret:
-        break
+    output_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    output_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    output_fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(args.output_path, fourcc, output_fps, (output_width, output_height))
 
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    fg_mask = background_subtractor.apply(gray_frame)
-
-    fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
-    fg_mask = cv2.dilate(fg_mask, None, iterations=2)
-
-    contours, _ = cv2.findContours(fg_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in contours:
-        if cv2.contourArea(contour) < 500:
-            continue
-
-        x, y, w, h = cv2.boundingRect(contour)
-
-        vehicle_image = frame[y:y+h, x:x+w]
-
-        vehicle_image = cv2.resize(vehicle_image, (100, 100))
-
-        mean_color = np.mean(vehicle_image, axis=(0, 1))
-        color_name = color_classifier.predict([mean_color])[0]
-
-        if previous_frame is not None:
-            vehicle_count += 1
-
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        cv2.putText(frame, f'Color: {color_name}', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-    speeds.append(vehicle_count)
+    previous_frame = None
     vehicle_count = 0
+    speeds = []
 
-    out.write(frame)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    cv2_imshow(frame)
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        fg_mask = background_subtractor.apply(gray_frame)
 
-    previous_frame = gray_frame
+        fg_mask = cv2.morphologyEx(fg_mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+        fg_mask = cv2.dilate(fg_mask, None, iterations=2)
 
-if speeds:
-    average_speed = np.mean(speeds)
-    print(f'Average speed of vehicles: {average_speed} km/hr')
-else:
-    print('No vehicles detected in the video.')
+        contours, _ = cv2.findContours(fg_mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-cap.release()
-out.release()
-cv2.destroyAllWindows()
+        for contour in contours:
+            if cv2.contourArea(contour) < 500:
+                continue
+
+            x, y, w, h = cv2.boundingRect(contour)
+
+            vehicle_image = frame[y:y+h, x:x+w]
+
+            vehicle_image = cv2.resize(vehicle_image, (100, 100))
+
+            mean_color = np.mean(vehicle_image, axis=(0, 1))
+            color_name = color_classifier.predict([mean_color])[0]
+
+            if previous_frame is not None:
+                vehicle_count += 1
+
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+            cv2.putText(frame, f'Color: {color_name}', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        speeds.append(vehicle_count)
+        vehicle_count = 0
+
+        out.write(frame)
+
+        if args.display:
+            cv2.imshow('Vehicle Detection', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        previous_frame = gray_frame
+
+    if speeds:
+        average_speed = np.mean(speeds)
+        print(f'Average speed of vehicles: {average_speed} km/hr')
+    else:
+        print('No vehicles detected in the video.')
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()

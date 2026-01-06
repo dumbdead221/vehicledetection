@@ -71,7 +71,7 @@ pip install -r requirements.txt
 
 4. **Update video input/output paths**
 
-The scripts currently use hard-coded Google Drive / Colab paths like:
+`Forimage.py` still uses hard-coded Google Drive / Colab paths like:
 
 ```python
 cap = cv2.VideoCapture('/content/drive/MyDrive/Projectmini/Black.mp4')
@@ -86,7 +86,7 @@ cap = cv2.VideoCapture('input_videos/my_video.mp4')
 out = cv2.VideoWriter('output_videos/output.avi', fourcc, output_fps, (output_width, output_height))
 ```
 
-Make sure the referenced folders exist.
+`combine.py` and `Forvedio.py` instead take input and output paths from command-line arguments (see the usage examples below). Make sure any referenced folders exist.
 
 ---
 
@@ -101,27 +101,31 @@ This script:
 - Computes a simple speed metric based on the number of detected vehicles per frame.
 - Overlays color labels on the video and writes the processed frames to an output video.
 
-Run:
+Run (with command-line arguments):
 
 ```bash
-python combine.py
+python combine.py --input path/to/input.mp4 --output path/to/output.avi
 ```
 
-You may need to:
-- Adjust the `VideoCapture` input path.
-- Adjust the `VideoWriter` output path.
+Options:
+- `--input` / `--video`: path to input video file (required)
+- `--output`: output video path (default: `output.avi`)
+- `--no-display`: disable the live display window
 
 ### 2. `Forvedio.py`
 
 This script focuses on video-based detection and uses the movement of the bounding box center between frames to estimate speed (in units per frame). It also overlays the average speed text on each frame.
 
-Run:
+Run (with command-line arguments):
 
 ```bash
-python Forvedio.py
+python Forvedio.py --input path/to/input.mp4 --output path/to/output_forvedio.avi
 ```
 
-Again, update the `VideoCapture` and `VideoWriter` paths for your environment.
+Options:
+- `--input` / `--video`: path to input video file (required)
+- `--output`: output video path (default: `output_forvedio.avi`)
+- `--no-display`: disable the live display window
 
 ### 3. `Forimage.py`
 

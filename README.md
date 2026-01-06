@@ -25,12 +25,18 @@ All scripts use background subtraction (`cv2.createBackgroundSubtractorMOG2`) to
 
 - Python 3.x
 - Recommended to use a virtual environment
-- Python packages:
+- Python packages (listed in `requirements.txt`):
   - `opencv-python`
   - `numpy`
   - `scikit-learn`
 
 Install the dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+or, if you prefer to install manually:
 
 ```bash
 pip install opencv-python numpy scikit-learn
@@ -60,7 +66,7 @@ python -m venv .venv
 3. **Install dependencies**
 
 ```bash
-pip install opencv-python numpy scikit-learn
+pip install -r requirements.txt
 ```
 
 4. **Update video input/output paths**
